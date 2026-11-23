@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 1.2
+- Ficha de impressão/PDF da denúncia, compacta, que omite as seções vazias
+- Cores distintas para cada status (etiquetas, lista e cartão do chamado) e legenda na lista
+- Novos status: Recebida, Em fiscalização, Notificada, Embargada, Autuada e Arquivada ("Aberta" vira "Recebida" automaticamente)
+- Campo de legislação aplicável (texto livre, com **negrito** e *itálico*), editável a qualquer momento
+
 ## 1.1
 - Responsável pelo local (nome, CPF, contato), com busca por esses dados
 - Denúncia anônima

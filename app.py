@@ -1,5 +1,5 @@
 """Sistema local de denúncias ambientais. Rodar: python app.py  ->  http://127.0.0.1:5000"""
-import os, sqlite3, uuid
+import os, re, sqlite3, uuid
 from datetime import date
 from flask import Flask, g, request, redirect, url_for, render_template, send_from_directory, abort
 from jinja2 import DictLoader
@@ -9,9 +9,15 @@ from werkzeug.utils import secure_filename
 BASE = os.path.dirname(os.path.abspath(__file__))
 DB, UP = os.path.join(BASE, "denuncias.db"), os.path.join(BASE, "uploads")
 os.makedirs(UP, exist_ok=True)
-STATUS = ["Aberta", "Em análise", "Vistoriada", "Aguardando retorno", "Encerrada"]
+STATUS = ["Recebida", "Em análise", "Em fiscalização", "Vistoriada", "Notificada", "Embargada", "Autuada",
+          "Aguardando retorno", "Encerrada", "Arquivada"]
+COR = {  # status: (cor do texto/borda, cor de fundo)
+    "Recebida": ("#1d5fa8", "#dce9f7"), "Em análise": ("#6b3fa0", "#ece3f6"), "Em fiscalização": ("#0b7285", "#d5f0f4"),
+    "Vistoriada": ("#2e7d32", "#dff0d8"), "Notificada": ("#8a5a00", "#fcefc7"), "Embargada": ("#b04a0b", "#fde3d0"),
+    "Autuada": ("#b3261e", "#fadbd8"), "Aguardando retorno": ("#a1296b", "#f8dceb"),
+    "Encerrada": ("#37474f", "#dde4e8"), "Arquivada": ("#6d4c41", "#ede4e0")}
 TIPOS = ["Atualização", "Vistoria", "Revisita", "Contato", "Encerramento"]
-VERSAO = "1.1"
+VERSAO = "1.2"
 DESD = ["Processo", "Notificação", "Embargo", "Autuação"]
 CENTRO = (-14.2, -51.9, 4)  # centro inicial do mapa (lat, lon, zoom); ajuste para sua região
 LEAF = ('<link rel=stylesheet href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">'
@@ -35,7 +41,7 @@ create table if not exists anexos(id integer primary key, denuncia_id integer no
 """
 
 NOVAS = {"denuncias": [("anonima", "integer default 0"), ("reincidente", "integer default 0"),
-    ("resp_nome", "text"), ("resp_cpf", "text"), ("resp_contato", "text")], "revisitas": [("fiscal", "text")]}
+    ("resp_nome", "text"), ("resp_cpf", "text"), ("resp_contato", "text"), ("legislacao", "text")], "revisitas": [("fiscal", "text")]}
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 200 * 1024 * 1024
@@ -71,6 +77,8 @@ def init():
         for n, tp in cols:
             if n not in have:
                 c.execute(f"alter table {t} add column {n} {tp}")
+    c.execute("update denuncias set status='Recebida' where status='Aberta'")
+    c.execute("update acompanhamentos set status_novo='Recebida' where status_novo='Aberta'")
     if not c.execute("select 1 from categorias").fetchone():
         c.executemany("insert into categorias(nome) values(?)", [(n,) for n in (
             "Queimada", "Descarte irregular de resíduos", "Desmatamento", "Poluição hídrica",
@@ -104,6 +112,26 @@ def salvar_arquivos(did, aid=None):
 def ctx():
     return dict(STATUS=STATUS, TIPOS=TIPOS, DESD=DESD, VERSAO=VERSAO, LEAF=Markup(LEAF), hoje=date.today().isoformat())
 
+@app.template_filter("st")
+def st_tag(v):
+    fg, bg = COR.get(v, ("#37474f", "#dde4e8"))
+    return Markup(f'<span class=tag style="background:{bg};color:{fg};border:1px solid {fg}">{escape(v)}</span>')
+
+@app.template_filter("cor")
+def st_cor(v):
+    return COR.get(v, ("#37474f",))[0]
+
+@app.template_filter("br")
+def br(v):
+    return f"{v[8:10]}/{v[5:7]}/{v[:4]}" if v and len(v) >= 10 else (v or "")
+
+@app.template_filter("fmt")
+def fmt(t):
+    t = str(escape(t or ""))
+    t = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", t)
+    t = re.sub(r"(?<![*\w])\*([^*\n]+?)\*(?![*\w])", r"<i>\1</i>", t)
+    return Markup(t.replace("\n", "<br>"))
+
 @app.template_filter("anexo")
 def anexo(x):
     u, n = "/uploads/" + x["arquivo"], escape(x["nome"])
@@ -131,7 +159,7 @@ def index():
         a += [f"%{b}%"] * 6
     return render_template("index", rows=q(sql + " order by d.id desc", a),
         cats=q("select * from categorias order by nome"),
-        abertas=q("select count(*) n from denuncias where status!='Encerrada'", one=True)["n"],
+        abertas=q("select count(*) n from denuncias where status not in ('Encerrada','Arquivada')", one=True)["n"],
         atras=q("select count(*) n from revisitas where feita is null and prevista<?",
                 (date.today().isoformat(),), True)["n"])
 
@@ -143,25 +171,38 @@ def nova():
                  (f["logradouro"], f["numero"], f["bairro"], f["municipio"], f["referencia"], num(f["lat"]), num(f["lon"])))
         anon = 1 if f.get("anonima") else 0
         did = ex("insert into denuncias(codigo,criada,categoria_id,endereco_id,descricao,denunciante,contato,prioridade,"
-                 "anonima,reincidente,resp_nome,resp_cpf,resp_contato) values(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                 "anonima,reincidente,resp_nome,resp_cpf,resp_contato,legislacao,status) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                  (novo_codigo(), f["criada"], f["categoria_id"], eid, f["descricao"],
                   "" if anon else f["denunciante"], "" if anon else f["contato"], f["prioridade"], anon,
-                  1 if f.get("reincidente") == "1" else 0, f["resp_nome"], f["resp_cpf"], f["resp_contato"]))
+                  1 if f.get("reincidente") == "1" else 0, f["resp_nome"], f["resp_cpf"], f["resp_contato"],
+                  f["legislacao"].strip(), "Recebida"))
         ex("insert into acompanhamentos(denuncia_id,data,tipo,texto,status_novo) values(?,?,?,?,?)",
-           (did, f["criada"], "Recebimento", "Denúncia recebida.", "Aberta"))
+           (did, f["criada"], "Recebimento", "Denúncia recebida.", "Recebida"))
         salvar_arquivos(did)
         return redirect(url_for("detalhe", did=did))
     return render_template("nova", cats=q("select * from categorias order by nome"), c=centro())
 
 @app.route("/d/<int:did>")
 def detalhe(did):
+    return pagina("detalhe", did)
+
+@app.route("/d/<int:did>/imprimir")
+def imprimir(did):
+    return pagina("ficha", did)
+
+@app.post("/d/<int:did>/legislacao")
+def legislacao(did):
+    ex("update denuncias set legislacao=? where id=?", (request.form["legislacao"].strip(), did))
+    return redirect(url_for("detalhe", did=did))
+
+def pagina(modelo, did):
     d = q("""select d.*, c.nome cat, e.logradouro, e.numero, e.bairro, e.municipio, e.referencia, e.lat, e.lon
       from denuncias d left join categorias c on c.id=d.categoria_id
       left join enderecos e on e.id=d.endereco_id where d.id=?""", (did,), True) or abort(404)
     an = {}
     for x in q("select * from anexos where denuncia_id=?", (did,)):
         an.setdefault(x["acomp_id"], []).append(x)
-    return render_template("detalhe", d=d, an=an,
+    return render_template(modelo, d=d, an=an,
         tl=q("select * from acompanhamentos where denuncia_id=? order by data desc, id desc", (did,)),
         revs=q("select * from revisitas where denuncia_id=? order by prevista", (did,)),
         desd=q("select * from desdobramentos where denuncia_id=? order by data", (did,)),
@@ -275,7 +316,7 @@ input,select,textarea{width:100%;padding:7px 9px;border:1px solid #9fb0a7;border
 .tag{font-size:12px;padding:2px 8px;border-radius:10px;background:#dfeae3;color:#17261f}.late{color:var(--red);font-weight:600}
 .tl{border-left:2px solid var(--ln);margin-left:6px;padding-left:18px}.tl>div{position:relative;margin-bottom:18px}
 .tl>div:before{content:"";position:absolute;left:-25px;top:7px;width:10px;height:10px;border-radius:50%;background:var(--g)}
-.mut{color:var(--mut);font-size:13px}.big{font-size:26px;font-weight:700}@media print{header,footer,.noprint{display:none!important}body{background:#fff}.card{border:0;padding:0 0 8px}main{margin:0;max-width:none}}#map{height:320px;border-radius:6px;border:1px solid var(--ln)}"""
+.mut{color:var(--mut);font-size:13px}.big{font-size:26px;font-weight:700}tr.st td:first-child{border-left:4px solid var(--c)}@media print{header,footer,.noprint{display:none!important}body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}.card{border:0;padding:0 0 8px}main{margin:0;max-width:none}}#map{height:320px;border-radius:6px;border:1px solid var(--ln)}"""
 
 TILE = "L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(m);"
 END = "{% endblock %}"
@@ -292,10 +333,10 @@ T = {
 <form class=card><div class=g><div><label>Busca</label><input name=q value="{{request.args.q}}" placeholder="Código, rua, bairro, texto"></div>
 <div><label>Status</label><select name=status><option value="">Todos</option>{% for s in STATUS %}<option {{'selected' if s==request.args.status}}>{{s}}</option>{% endfor %}</select></div>
 <div><label>Categoria</label><select name=cat><option value="">Todas</option>{% for c in cats %}<option value={{c.id}} {{'selected' if c.id|string==request.args.cat}}>{{c.nome}}</option>{% endfor %}</select></div></div>
-<p><button>Filtrar</button></p></form>
+<p><button>Filtrar</button></p><p class=mut>Legenda: {% for s in STATUS %}{{s|st}} {% endfor %}</p></form>
 <div class=card style="overflow:auto"><table><tr><th>Código<th>Recebida<th>Categoria<th>Local<th>Status<th>Desdobramento<th>Próxima revisita</tr>
-{% for r in rows %}<tr><td><a href="/d/{{r.id}}">{{r.codigo}}</a><td>{{r.criada}}<td>{{r.cat}}<td>{{r.logradouro}} {{r.numero}}, {{r.bairro}}
-<td><span class=tag>{{r.status}}</span>{% if r.reincidente %} <span class=tag>Reincidência</span>{% endif %}<td>{{r.desd or '—'}}<td class="{{'late' if r.prox and r.prox<hoje}}">{{r.prox or '—'}}</tr>
+{% for r in rows %}<tr class=st style="--c:{{r.status|cor}}"><td><a href="/d/{{r.id}}">{{r.codigo}}</a><td>{{r.criada}}<td>{{r.cat}}<td>{{r.logradouro}} {{r.numero}}, {{r.bairro}}
+<td>{{r.status|st}}{% if r.reincidente %} <span class=tag>Reincidência</span>{% endif %}<td>{{r.desd or '—'}}<td class="{{'late' if r.prox and r.prox<hoje}}">{{r.prox or '—'}}</tr>
 {% else %}<tr><td colspan=7>Nenhuma denúncia encontrada. <a href="/nova">Registrar uma denúncia</a></tr>{% endfor %}</table></div>""" + END,
 
 "nova": """{% extends "base" %}{% block head %}{{LEAF}}{% endblock %}{% block c %}<h1>Nova denúncia</h1>
@@ -304,6 +345,8 @@ T = {
 <div><label>Categoria</label><select name=categoria_id>{% for c in cats %}<option value={{c.id}}>{{c.nome}}</option>{% endfor %}</select></div>
 <div><label>Prioridade</label><select name=prioridade><option>Normal<option>Alta<option>Baixa</select></div></div>
 <label>Descrição</label><textarea name=descricao rows=4 required></textarea>
+<label>Legislação aplicável (opcional)</label><textarea name=legislacao rows=2 placeholder="Ex.: Lei 9.605/1998, art. 38"></textarea>
+<div class=mut>Um item por linha. Use **negrito** ou *itálico* para destacar.</div>
 <div class=g><div><label>Situação</label><select name=reincidente><option value=0>Primeira vez<option value=1>Reincidência</select></div>
 <div><label>&nbsp;</label><label style="margin:0;color:inherit;font-size:15px"><input type=checkbox name=anonima style="width:auto" onchange="denunciante.disabled=contato.disabled=this.checked"> Denúncia anônima</label></div></div>
 <div class=g><div><label>Denunciante (opcional)</label><input name=denunciante id=denunciante></div>
@@ -322,33 +365,37 @@ m.on('click',function(e){put(e.latlng.lat,e.latlng.lng)});
 function gps(){navigator.geolocation.getCurrentPosition(function(p){put(p.coords.latitude,p.coords.longitude,16)},function(){alert('Não foi possível obter a localização.')})}
 </script>""" + END,
 
-"detalhe": """{% extends "base" %}{% block c %}<h1>{{d.codigo}} <span class=tag>{{d.status}}</span>{% if d.reincidente %} <span class=tag>Reincidência</span>{% endif %}{% if d.anonima %} <span class=tag>Anônima</span>{% endif %}</h1>
-<div class=card><div class=g><div><div class=mut>Categoria</div>{{d.cat}}</div><div><div class=mut>Recebida em</div>{{d.criada}}</div>
-<div><div class=mut>Prioridade</div>{{d.prioridade}}</div></div><p>{{d.descricao}}</p>
+"detalhe": """{% extends "base" %}{% block c %}<h1>{{d.codigo}} {{d.status|st}}{% if d.reincidente %} <span class=tag>Reincidência</span>{% endif %}{% if d.anonima %} <span class=tag>Anônima</span>{% endif %}</h1>
+<p class=noprint><a class=btn href="/d/{{d.id}}/imprimir" target=_blank>Imprimir / PDF</a></p>
+<div class=card style="border-top:4px solid {{d.status|cor}}"><div class=g><div><div class=mut>Categoria</div>{{d.cat}}</div><div><div class=mut>Recebida em</div>{{d.criada}}</div>
+<div><div class=mut>Prioridade</div>{{d.prioridade}}</div></div><p>{{d.descricao}}</p>{% if d.legislacao %}<p><b>Legislação aplicável:</b><br>{{d.legislacao|fmt}}</p>{% endif %}
 <p><b>Local:</b> {{d.logradouro}} {{d.numero}}, {{d.bairro}} - {{d.municipio}}{% if d.referencia %} ({{d.referencia}}){% endif %}
 {% if d.lat is not none %}<br><span class=mut>{{d.lat}}, {{d.lon}}</span> · <a target=_blank href="https://www.openstreetmap.org/?mlat={{d.lat}}&mlon={{d.lon}}#map=17/{{d.lat}}/{{d.lon}}">Ver no mapa</a>{% endif %}</p>
 {% if d.anonima %}<p class=mut>Denúncia anônima</p>{% elif d.denunciante %}<p class=mut>Denunciante: {{d.denunciante}} {{d.contato}}</p>{% endif %}
 {% if d.resp_nome or d.resp_cpf or d.resp_contato %}<p><b>Responsável pelo local:</b> {{d.resp_nome}} · CPF {{d.resp_cpf}} · {{d.resp_contato}}</p>{% endif %}
+<details class=noprint style="margin:8px 0"><summary>{{'Editar' if d.legislacao else 'Informar'}} legislação aplicável</summary>
+<form method=post action="/d/{{d.id}}/legislacao"><textarea name=legislacao rows=3 placeholder="Ex.: Lei 9.605/1998, art. 38; Decreto 6.514/2008, art. 43">{{d.legislacao or ''}}</textarea>
+<p><button class=s>Salvar legislação</button></p></form></details>
 {% for x in an.get(None, []) %}{{x|anexo}}{% endfor %}</div>
 <div class=card><h2>Processo, notificação, embargo ou autuação</h2>
 {% for x in desd %}<p><span class=tag>{{x.tipo}}</span> {{x.numero}} · {{x.data}} {{x.obs}}</p>{% else %}<p class=mut>Nada registrado até agora.</p>{% endfor %}
-<form method=post action="/d/{{d.id}}/desdobramento" class=g><div><label>Tipo</label><select name=tipo>{% for t in DESD %}<option>{{t}}{% endfor %}</select></div>
+<form method=post action="/d/{{d.id}}/desdobramento" class="g noprint"><div><label>Tipo</label><select name=tipo>{% for t in DESD %}<option>{{t}}{% endfor %}</select></div>
 <div><label>Número</label><input name=numero></div><div><label>Data</label><input type=date name=data value="{{hoje}}" required></div>
 <div><label>Observação</label><input name=obs></div><div><label>&nbsp;</label><button class=s>Registrar</button></div></form>
 {% if outros %}<p class=mut style="margin-top:12px">Outros chamados neste endereço: {% for o in outros %}<a href="/d/{{o.id}}">{{o.codigo}}</a> ({{o.criada}}) {% endfor %}</p>{% endif %}</div>
 <div class=card><h2>Revisitas</h2>{% for r in revs %}<div style="margin-bottom:10px">
 {% if r.feita %}Realizada em {{r.feita}}: {{r.obs}}{% else %}<span class="{{'late' if r.prevista<hoje}}">Prevista para {{r.prevista}}</span>
-<form method=post action="/revisita/{{r.id}}/feita" style="display:flex;gap:8px;margin-top:4px"><input name=obs placeholder="O que foi constatado?" required><input name=fiscal placeholder="Fiscal" style="max-width:160px">
+<form method=post action="/revisita/{{r.id}}/feita" class=noprint style="display:flex;gap:8px;margin-top:4px"><input name=obs placeholder="O que foi constatado?" required><input name=fiscal placeholder="Fiscal" style="max-width:160px">
 <button class=s>Marcar como realizada</button></form>{% endif %}</div>{% else %}<p class=mut>Nenhuma revisita agendada.</p>{% endfor %}
-<form method=post action="/d/{{d.id}}/revisita" style="display:flex;gap:8px;max-width:360px"><input type=date name=prevista required><button class=s>Agendar revisita</button></form></div>
-<div class=card><h2>Atualizar chamado</h2><form method=post action="/d/{{d.id}}/acompanhar" enctype=multipart/form-data><div class=g>
+<form method=post action="/d/{{d.id}}/revisita" class=noprint style="display:flex;gap:8px;max-width:360px"><input type=date name=prevista required><button class=s>Agendar revisita</button></form></div>
+<div class="card noprint"><h2>Atualizar chamado</h2><form method=post action="/d/{{d.id}}/acompanhar" enctype=multipart/form-data><div class=g>
 <div><label>Data</label><input type=date name=data value="{{hoje}}" required></div>
 <div><label>Tipo</label><select name=tipo>{% for t in TIPOS %}<option>{{t}}{% endfor %}</select></div>
 <div><label>Novo status</label><select name=status><option value="">Manter ({{d.status}})</option>{% for s in STATUS %}<option>{{s}}{% endfor %}</select></div>
 <div><label>Registrado por</label><input name=autor></div></div><label>O que aconteceu</label><textarea name=texto rows=3 required></textarea>
 <label>Fotos e documentos</label><input type=file name=arquivos multiple><p><button>Registrar atualização</button></p></form></div>
 <div class=card><h2>Histórico</h2><div class=tl>{% for a in tl %}<div><b>{{a.data}}</b> · {{a.tipo}}
-{% if a.status_novo %}<span class=tag>{{a.status_novo}}</span>{% endif %}{% if a.autor %} <span class=mut>por {{a.autor}}</span>{% endif %}
+{% if a.status_novo %}{{a.status_novo|st}}{% endif %}{% if a.autor %} <span class=mut>por {{a.autor}}</span>{% endif %}
 <div style="white-space:pre-wrap">{{a.texto}}</div>{% for x in an.get(a.id, []) %}{{x|anexo}}{% endfor %}</div>{% endfor %}</div></div>""" + END,
 
 "revisitas": """{% extends "base" %}{% block c %}<h1>Revisitas pendentes</h1><div class=card><table>
@@ -374,10 +421,32 @@ T["relatorio"] = """{% extends "base" %}{% block c %}<h1>Relatório mensal</h1>
 <div><div class=mut>Registros de acompanhamento</div><div class=big>{{reg|length}}</div></div><div><div class=mut>Processos, notificações, embargos e autuações</div><div class=big>{{desd|length}}</div></div></div>
 <p class=mut>Revisitas previstas no mês e ainda pendentes: {{prev}}</p><div class=g><table><tr><th>Categoria<th>Denúncias</tr>{% for r in porcat %}<tr><td>{{r.nome}}<td>{{r.n}}</tr>{% endfor %}</table>
 <table><tr><th>Fiscal<th>Registros<th>Vistorias e revisitas</tr>{% for r in porfiscal %}<tr><td>{{r.f}}<td>{{r.n}}<td>{{r.v}}</tr>{% endfor %}</table></div></div>
-<div class=card><h2>Denúncias recebidas</h2><table><tr><th>Código<th>Data<th>Categoria<th>Local<th>Situação</tr>{% for d in den %}<tr><td>{{d.codigo}}<td>{{d.criada}}<td>{{d.cat}}<td>{{d.logradouro}} {{d.numero}}, {{d.bairro}}<td>{{d.status}}{% if d.reincidente %} · reincidência{% endif %}</tr>{% else %}<tr><td colspan=5>Nenhuma.</tr>{% endfor %}</table></div>
+<div class=card><h2>Denúncias recebidas</h2><table><tr><th>Código<th>Data<th>Categoria<th>Local<th>Situação</tr>{% for d in den %}<tr><td>{{d.codigo}}<td>{{d.criada}}<td>{{d.cat}}<td>{{d.logradouro}} {{d.numero}}, {{d.bairro}}<td>{{d.status|st}}{% if d.reincidente %} · reincidência{% endif %}</tr>{% else %}<tr><td colspan=5>Nenhuma.</tr>{% endfor %}</table></div>
 <div class=card><h2>Revisitas realizadas</h2><table><tr><th>Data<th>Chamado<th>Fiscal<th>Constatado</tr>{% for r in rev %}<tr><td>{{r.feita}}<td>{{r.codigo}}<td>{{r.fiscal}}<td>{{r.obs}}</tr>{% else %}<tr><td colspan=4>Nenhuma.</tr>{% endfor %}</table></div>
 <div class=card><h2>Registros de acompanhamento</h2><table><tr><th>Data<th>Chamado<th>Tipo<th>Fiscal<th>Registro</tr>{% for a in reg %}<tr><td>{{a.data}}<td>{{a.codigo}}<td>{{a.tipo}}<td>{{a.autor}}<td>{{a.texto}}</tr>{% else %}<tr><td colspan=5>Nenhum.</tr>{% endfor %}</table></div>
 <div class=card><h2>Processos, notificações, embargos e autuações</h2><table><tr><th>Data<th>Chamado<th>Tipo<th>Número<th>Observação</tr>{% for x in desd %}<tr><td>{{x.data}}<td>{{x.codigo}}<td>{{x.tipo}}<td>{{x.numero}}<td>{{x.obs}}</tr>{% else %}<tr><td colspan=5>Nenhum.</tr>{% endfor %}</table></div>""" + END
+T["ficha"] = """{% extends "base" %}{% block head %}<style>
+.fx{font-size:13px;line-height:1.4}.fx h2{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:#14392c;border-bottom:1px solid #14392c;margin:12px 0 5px;padding-bottom:2px}
+.fx table{font-size:12px}.fx td,.fx th{padding:3px 6px}.fx td{border-bottom:1px solid #e1e8e3}.k{color:#5b6b63}
+.hd{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;border-bottom:2px solid #14392c;padding-bottom:6px}
+.meta{display:flex;flex-wrap:wrap;gap:3px 22px;margin-top:8px}
+@media print{@page{margin:12mm}.fx{font-size:11px}.fx h2{break-after:avoid}.fx tr,.fx .it{break-inside:avoid}main{padding:0}}
+</style>{% endblock %}{% block c %}
+<p class=noprint><button onclick="print()">Imprimir / Salvar como PDF</button> <a class="btn s" href="/d/{{d.id}}">Voltar ao chamado</a></p>
+<div class="card fx"><div class=hd><div><b style="font-size:17px">Ficha de denúncia ambiental</b><div class=k>Emitida em {{hoje|br}}</div></div>
+<div style="text-align:right"><b style="font-size:17px">{{d.codigo}}</b><br>{{d.status|st}}</div></div>
+<div class=meta><span><span class=k>Recebida em</span> <b>{{d.criada|br}}</b></span><span><span class=k>Categoria</span> <b>{{d.cat}}</b></span>
+<span><span class=k>Prioridade</span> <b>{{d.prioridade}}</b></span><span><span class=k>Situação</span> <b>{{'Reincidência' if d.reincidente else 'Primeira vez'}}</b></span>
+<span><span class=k>Denunciante</span> <b>{% if d.anonima %}Anônima{% else %}{{d.denunciante or 'Não informado'}}{% if d.contato %} · {{d.contato}}{% endif %}{% endif %}</b></span></div>
+<h2>Descrição</h2><div style="white-space:pre-wrap">{{d.descricao}}</div>
+{% if d.legislacao %}<h2>Legislação aplicável</h2><div>{{d.legislacao|fmt}}</div>{% endif %}
+<h2>Local</h2><div>{{d.logradouro}} {{d.numero}}, {{d.bairro}}{% if d.municipio %} - {{d.municipio}}{% endif %}{% if d.referencia %} · Ref.: {{d.referencia}}{% endif %}{% if d.lat is not none %} · <span class=k>Coord.</span> {{d.lat}}, {{d.lon}}{% endif %}</div>
+{% if d.resp_nome or d.resp_cpf or d.resp_contato %}<div><span class=k>Responsável pelo local:</span> {{d.resp_nome}}{% if d.resp_cpf %} · CPF {{d.resp_cpf}}{% endif %}{% if d.resp_contato %} · {{d.resp_contato}}{% endif %}</div>{% endif %}
+{% if desd %}<h2>Processos, notificações, embargos e autuações</h2><table><tr><th>Tipo<th>Número<th>Data<th>Observação</tr>{% for x in desd %}<tr><td>{{x.tipo}}<td>{{x.numero}}<td>{{x.data|br}}<td>{{x.obs}}</tr>{% endfor %}</table>{% endif %}
+{% if revs %}<h2>Revisitas</h2><table><tr><th>Prevista<th>Realizada<th>Fiscal<th>Constatado</tr>{% for r in revs %}<tr><td>{{r.prevista|br}}<td>{{r.feita|br or 'Pendente'}}<td>{{r.fiscal}}<td>{{r.obs}}</tr>{% endfor %}</table>{% endif %}
+<h2>Histórico</h2><table><tr><th style="width:78px">Data<th style="width:90px">Tipo<th>Registro</tr>{% for a in tl|reverse %}<tr><td>{{a.data|br}}<td>{{a.tipo}}<td>{% if a.status_novo %}{{a.status_novo|st}} {% endif %}<span style="white-space:pre-wrap">{{a.texto}}</span>{% if a.autor %} <span class=k>({{a.autor}})</span>{% endif %}</tr>{% endfor %}</table>
+{% set todos = an.values()|sum(start=[]) %}{% if todos %}<h2>Anexos</h2><div class=it>{% for x in todos %}{{x|anexo}}{% endfor %}</div>{% endif %}
+</div>""" + END
 app.jinja_env.loader = DictLoader(T)
 
 if __name__ == "__main__":
