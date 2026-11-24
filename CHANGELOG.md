@@ -1,5 +1,17 @@
 # Histórico de versões
 
+## 1.3
+- Editar o cadastro de denúncias já registradas (dados, responsável e local com mapa); cada correção entra no histórico como "Correção" e não conta na produtividade
+- Backup com um clique: .zip com banco e anexos, com as 5 últimas cópias guardadas na pasta backups
+- Segurança: os textos digitados passam a ser exibidos de forma segura (escape de HTML)
+- Revisão geral: código documentado (docstrings e comentários) e README.md
+- Listagem paginada (50 por página) e índices no banco, para continuar rápido com muitos chamados
+- Cadastro, edição e demais gravações em transação única; código único protegido contra cadastros simultâneos
+- Correções: revisita concluída duas vezes duplicava o registro; datas, coordenadas, status e tipos agora são validados; chamados inexistentes respondem 404
+- Segurança: anexos HTML/SVG não são mais executados (só imagens e PDF abrem no navegador), proteção contra envios de outros sites e cabeçalhos de segurança
+- Mensagens de confirmação, páginas de erro amigáveis e título por página (o PDF da ficha já sai com o código no nome)
+- Configuração por variáveis de ambiente: DENUNCIAS_DIR, DENUNCIAS_HOST e DENUNCIAS_PORT
+
 ## 1.2
 - Ficha de impressão/PDF da denúncia, compacta, que omite as seções vazias
 - Cores distintas para cada status (etiquetas, lista e cartão do chamado) e legenda na lista
