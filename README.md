@@ -13,6 +13,19 @@ relatório mensal por fiscal, edição de cadastro e backup. Feito com Python (F
 
 Na primeira execução o banco é criado, e bancos de versões anteriores são atualizados sozinhos.
 
+## Atalho na área de trabalho
+
+Dê dois cliques em **`criar_atalho.bat`**: ele cria na área de trabalho o atalho **Denuncias Ambientais** (com ícone), que
+inicia o sistema e abre o navegador sozinho. Se o sistema já estiver aberto, o atalho só abre o navegador. Mantenha a janela
+do sistema aberta (ela fica minimizada); para encerrar, feche essa janela. Sem o atalho, use `iniciar.bat`.
+
+## Fiscalizações de ofício
+
+Fiscalizações que não vieram de denúncia são registradas em **Nova fiscalização**. Cada uma recebe um código próprio,
+`FIS-AAAA-00001` (sequência separada da das denúncias, `DEN-AAAA-00001`), e tem tudo o que um chamado tem: histórico, anexos,
+revisitas, processo/notificação/embargo/autuação, mapa e ficha. No relatório mensal aparecem em seção própria, com o fiscal
+responsável, e não contam como denúncias recebidas. Na lista, o filtro **Origem** separa as duas.
+
 ## Onde ficam os dados
 
 | Item | Local |

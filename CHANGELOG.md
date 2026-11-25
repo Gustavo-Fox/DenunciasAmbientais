@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 1.4
+- Atalho para a área de trabalho (criar_atalho.bat, com ícone) e inicializador (iniciar.bat); o sistema abre o navegador sozinho
+- Fiscalizações de ofício (que não vieram de denúncia): código próprio FIS-AAAA-00001, fiscal responsável, histórico, anexos, revisitas, mapa, ficha e seção própria no relatório mensal
+
 ## 1.3.1
 - Correção: os mapas voltam a carregar (o cabeçalho de privacidade da 1.3 fazia o OpenStreetMap bloquear os blocos do mapa)
 
