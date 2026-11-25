@@ -1,5 +1,8 @@
 # Histórico de versões
 
+## 1.3.1
+- Correção: os mapas voltam a carregar (o cabeçalho de privacidade da 1.3 fazia o OpenStreetMap bloquear os blocos do mapa)
+
 ## 1.3
 - Editar o cadastro de denúncias já registradas (dados, responsável e local com mapa); cada correção entra no histórico como "Correção" e não conta na produtividade
 - Backup com um clique: .zip com banco e anexos, com as 5 últimas cópias guardadas na pasta backups

@@ -34,7 +34,7 @@ COR = {  # status: (cor do texto/borda, cor de fundo)
     "Encerrada": ("#37474f", "#dde4e8"), "Arquivada": ("#6d4c41", "#ede4e0")}
 PRIORIDADES = ["Baixa", "Normal", "Alta"]
 TIPOS = ["Atualização", "Vistoria", "Revisita", "Contato", "Encerramento"]
-VERSAO = "1.3"
+VERSAO = "1.3.1"
 DESD = ["Processo", "Notificação", "Embargo", "Autuação"]
 CENTRO = (-14.2, -51.9, 4)  # centro inicial do mapa (lat, lon, zoom); ajuste para sua região
 LEAF = ('<link rel=stylesheet href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">'
@@ -192,8 +192,11 @@ def mesma_origem():
 
 @app.after_request
 def cabecalhos(r):
-    """Cabeçalhos de segurança em todas as respostas."""
-    r.headers.update({"X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY", "Referrer-Policy": "same-origin"})
+    """Cabeçalhos de segurança em todas as respostas.
+
+    O Referrer-Policy precisa permitir enviar a origem a outros sites: o OpenStreetMap bloqueia o mapa sem ela.
+    """
+    r.headers.update({"X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY", "Referrer-Policy": "strict-origin-when-cross-origin"})
     return r
 
 @app.errorhandler(400)
