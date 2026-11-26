@@ -1,0 +1,63 @@
+:root{--g:#1e6b52;--ln:#cbd6cf;--red:#b3382c;--mut:#5b6b63}
+*{box-sizing:border-box}
+
+body{margin:0;background:#edf1ee;color:#17261f;font:15px/1.5 "Segoe UI",system-ui,sans-serif}
+
+header{background:#14392c;display:flex;gap:20px;align-items:center;padding:10px 24px;flex-wrap:wrap}
+
+header a{color:#dcebe3;text-decoration:none}
+.logo{font-weight:700;font-size:17px;color:#fff!important}
+
+header nav{display:flex;gap:16px;flex:1}
+header .btn{color:#fff}
+main{max-width:1060px;margin:24px auto;padding:0 16px}
+
+.card{background:#fff;border:1px solid var(--ln);border-radius:6px;padding:16px;margin-bottom:16px}
+
+h1{font-size:22px;margin:0 0 12px}
+h2{font-size:16px;margin:0 0 10px}
+a{color:var(--g)}
+
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px;border-bottom:1px solid var(--ln);vertical-align:top}
+
+th{font-weight:600;color:var(--mut)}
+label{display:block;font-size:13px;color:var(--mut);margin:8px 0 3px}
+
+input,select,textarea{width:100%;padding:7px 9px;border:1px solid #9fb0a7;border-radius:4px;font:inherit;background:#fff}
+
+.g{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0 14px}
+
+.btn,button{background:var(--g);color:#fff;border:0;border-radius:4px;padding:8px 14px;font:inherit;cursor:pointer;text-decoration:none;display:inline-block;white-space:nowrap}
+
+.s{background:#fff!important;color:var(--g)!important;border:1px solid var(--g)}
+
+.tag{font-size:12px;padding:2px 8px;border-radius:10px;background:#dfeae3;color:#17261f}
+.late{color:var(--red);font-weight:600}
+
+.tl{border-left:2px solid var(--ln);margin-left:6px;padding-left:18px}
+.tl>div{position:relative;margin-bottom:18px}
+
+.tl>div:before{content:"";position:absolute;left:-25px;top:7px;width:10px;height:10px;border-radius:50%;background:var(--g)}
+
+.mut{color:var(--mut);font-size:13px}
+.big{font-size:26px;font-weight:700}
+tr.st td:first-child{border-left:4px solid var(--c)}
+:focus-visible{outline:2px solid #1e6b52;outline-offset:2px}
+.aviso{background:#e3f1e8;border:1px solid #9cc7ae;color:#14392c;border-radius:6px;padding:10px 14px;margin-bottom:16px}
+@media print{header,footer,.aviso,.noprint{display:none!important}
+body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.card{border:0;padding:0 0 8px}
+main{margin:0;max-width:none}}
+#map{height:320px;border-radius:6px;border:1px solid var(--ln)}
+/* ficha de impressão */
+.fx{font-size:13px;line-height:1.4}.fx h2{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:#14392c;border-bottom:1px solid #14392c;margin:12px 0 5px;padding-bottom:2px}
+.fx table{font-size:12px}.fx td,.fx th{padding:3px 6px}.fx td{border-bottom:1px solid #e1e8e3}.k{color:#5b6b63}
+.hd{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;border-bottom:2px solid #14392c;padding-bottom:6px}
+.meta{display:flex;flex-wrap:wrap;gap:3px 22px;margin-top:8px}
+@media print{@page{margin:12mm}.fx{font-size:11px}.fx h2{break-after:avoid}.fx tr,.fx .it{break-inside:avoid}main{padding:0}}
+/* cancelamento e anexos */
+.cancelado{border-left:4px solid #212121;background:#f4f4f4}
+.anexo{display:inline-block;margin:4px 10px 0 0;vertical-align:top}
+.anexo img{height:80px;border-radius:4px;display:block}
+.gerir{font-size:13px;margin-top:2px}.gerir form{display:grid;gap:4px;margin-top:4px;min-width:240px}

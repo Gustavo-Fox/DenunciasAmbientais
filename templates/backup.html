@@ -1,0 +1,6 @@
+{% extends "base.html" %}{% block c %}<h1>Backup</h1><div class=card>
+<p>Gera um arquivo .zip com o banco de dados e todas as fotos e documentos anexados.</p>
+<form method=post><button>Gerar e baixar backup agora</button></form>
+<p class=mut>Uma cópia também fica na pasta <b>backups</b> do sistema (as 5 mais recentes). Guarde o arquivo baixado também fora deste computador, como em um pendrive ou HD externo.</p></div>
+<div class=card><h2>Backups guardados</h2><table><tr><th>Arquivo<th>Tamanho</tr>{% for n, t in lista %}<tr><td><a href="/backup/{{n}}">{{n}}</a><td>{{t}}</tr>{% else %}<tr><td colspan=2>Nenhum ainda.</tr>{% endfor %}</table></div>
+<div class=card><h2>Como restaurar</h2><p>Feche o sistema, extraia o .zip, substitua o arquivo <b>denuncias.db</b> e a pasta <b>uploads</b> pelos do backup e abra o sistema novamente.</p></div>{% endblock %}

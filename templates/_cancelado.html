@@ -1,0 +1,5 @@
+{% if d.status == 'Cancelada' %}<div class="card cancelado"><b>Chamado cancelado</b>{% if cancel %} em {{ cancel.data|br }}{% if cancel.autor %} por {{ cancel.autor }}{% endif %}{% endif %}
+<p style="white-space:pre-wrap">{{ cancel.texto if cancel else '' }}</p>
+<details class=noprint><summary>Reativar chamado</summary><form method=post action="/d/{{d.id}}/reativar">
+<label>Justificativa da reativação (obrigatória)</label><textarea name=motivo rows=2 required></textarea>
+<label>Reativado por</label><input name=autor style="max-width:260px"><p><button class=s>Reativar chamado</button></p></form></details></div>{% endif %}

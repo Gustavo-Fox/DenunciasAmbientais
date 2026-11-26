@@ -1,83 +1,78 @@
 # Sistema de Denúncias Ambientais
 
-Sistema de chamados para registrar e acompanhar denúncias ambientais: código único, endereço com mapa, categorias,
-histórico, anexos, revisitas, desdobramentos (processo, notificação, embargo, autuação), ficha para impressão,
-relatório mensal por fiscal, edição de cadastro e backup. Feito com Python (Flask) e SQLite, rodando no próprio computador.
+Sistema de chamados para registrar e acompanhar denúncias e fiscalizações de ofício: código único, endereço com mapa,
+categorias, histórico, anexos, revisitas, processo/notificação/embargo/autuação, ficha para impressão, relatório mensal
+por fiscal, edição de cadastro, cancelamento com justificativa e backup. Python (Flask) + SQLite, rodando no próprio computador.
 
 ## Como rodar
 
 1. Instale o Python 3.9 ou mais novo.
-2. Na pasta do projeto: `pip install -r requirements.txt`
-3. Inicie: `python app.py`
-4. Abra `http://127.0.0.1:5000` no navegador.
+2. Na pasta do projeto: `pip install -r requirements.txt` (Flask e Pillow, esta para as miniaturas).
+3. Inicie: `python app.py`. O navegador abre em `http://127.0.0.1:5000`.
 
-Na primeira execução o banco é criado, e bancos de versões anteriores são atualizados sozinhos.
+**Atalho no Windows:** dê dois cliques em `criar_atalho.bat`. Ele cria na área de trabalho o atalho *Denuncias Ambientais*,
+que inicia o sistema e abre o navegador (se já estiver aberto, só abre o navegador). Mantenha a janela do sistema aberta
+(minimizada); para encerrar, feche-a. Sem o atalho, use `iniciar.bat`.
 
-## Atalho na área de trabalho
+## Recursos principais
 
-Dê dois cliques em **`criar_atalho.bat`**: ele cria na área de trabalho o atalho **Denuncias Ambientais** (com ícone), que
-inicia o sistema e abre o navegador sozinho. Se o sistema já estiver aberto, o atalho só abre o navegador. Mantenha a janela
-do sistema aberta (ela fica minimizada); para encerrar, feche essa janela. Sem o atalho, use `iniciar.bat`.
-
-## Fiscalizações de ofício
-
-Fiscalizações que não vieram de denúncia são registradas em **Nova fiscalização**. Cada uma recebe um código próprio,
-`FIS-AAAA-00001` (sequência separada da das denúncias, `DEN-AAAA-00001`), e tem tudo o que um chamado tem: histórico, anexos,
-revisitas, processo/notificação/embargo/autuação, mapa e ficha. No relatório mensal aparecem em seção própria, com o fiscal
-responsável, e não contam como denúncias recebidas. Na lista, o filtro **Origem** separa as duas.
+- **Denúncias e fiscalizações de ofício:** cada tipo tem sua sequência de código (`DEN-AAAA-00001` e `FIS-AAAA-00001`).
+- **Cancelar chamado:** exige justificativa (mínimo de 10 caracteres) e não apaga nada. O chamado vira "Cancelada", fica
+  bloqueado para alterações e pode ser reativado, também com justificativa. Tudo fica no histórico.
+- **Anexos:** imagens até 15 MB, documentos até 25 MB, vídeos até 100 MB, 20 arquivos por envio (limites em
+  `sistema/config.py`). Só tipos permitidos, com conferência do conteúdo. Imagens têm miniatura. É possível **substituir**
+  ou **remover** um anexo informando o motivo: o arquivo vai para `uploads/_removidos` (não é apagado) e o fato entra no histórico.
+- **Relatório mensal** por fiscal, **ficha** para imprimir/PDF, **mapa**, **backup** de um clique.
 
 ## Onde ficam os dados
 
 | Item | Local |
 |---|---|
 | Banco de dados | `denuncias.db` |
-| Fotos e documentos | pasta `uploads/` |
-| Cópias de segurança | pasta `backups/` (as 5 mais recentes) |
+| Fotos e documentos | `uploads/` (miniaturas em `uploads/_mini`, removidos em `uploads/_removidos`) |
+| Cópias de segurança | `backups/` (as 5 mais recentes) |
 
-Para guardar os dados em outra pasta, defina `DENUNCIAS_DIR` antes de iniciar. Também existem `DENUNCIAS_HOST`
-(padrão `127.0.0.1`, só este computador) e `DENUNCIAS_PORT` (padrão `5000`).
+Outra pasta de dados: defina `DENUNCIAS_DIR`. Também existem `DENUNCIAS_HOST` (padrão `127.0.0.1`, só este computador)
+e `DENUNCIAS_PORT` (padrão `5000`).
 
-## Backup e restauração
-
-- **Fazer:** menu **Backup > Gerar e baixar backup agora**. Guarde o arquivo também fora do computador.
-- **Restaurar:** feche o sistema, extraia o `.zip`, substitua `denuncias.db` e a pasta `uploads` pelos do backup e abra de novo.
+**Backup:** menu *Backup > Gerar e baixar backup agora* (guarde o arquivo também fora do computador).
+**Restaurar:** feche o sistema, extraia o `.zip`, substitua `denuncias.db` e a pasta `uploads` e abra de novo.
 
 ## Atualizar para uma nova versão
 
-1. Faça um backup. 2. Feche o sistema. 3. Substitua o `app.py` (e o `CHANGELOG.md`). 4. Rode `python app.py`.
-Os dados não são afetados, porque ficam fora do código.
+1. Faça um backup e feche o sistema.
+2. Copie os arquivos novos por cima (`app.py`, `sistema/`, `templates/`, `static/`, `tests/` e os `.bat`), **sem apagar**
+   `denuncias.db`, `uploads/` e `backups/`.
+3. Rode de novo. O banco é atualizado sozinho. Veja o `CHANGELOG.md`.
+
+## Organização do código (para trabalhar em equipe)
+
+```
+app.py                  ponto de entrada (abre o navegador, roda o servidor)
+sistema/
+  __init__.py           create_app(): configuração, segurança, erros e registro das rotas
+  config.py             constantes: status e cores, tipos, limites de anexos, variáveis de ambiente
+  db.py                 conexão SQLite, transações, esquema e migrações de bancos antigos
+  repo.py               camada de acesso a dados: TODO o SQL fica aqui
+  armazenamento.py      anexos: validação, gravação, miniaturas, remoção sem apagar
+  util.py, filters.py   leitura de formulários, datas, filtros dos modelos
+  rotas/                uma "blueprint" por assunto: painel, chamados, revisitas, anexos, relatorios, backup
+templates/              telas (HTML/Jinja); arquivos começados por _ são pedaços reutilizados
+static/css, static/js   estilos e scripts (mapa)
+tests/                  testes automáticos
+```
+
+Regras: rota não escreve SQL (chama `repo`); várias gravações que devem andar juntas usam `with transacao() as cx:`;
+mudanças de tela ficam em `templates/` e `static/`, sem HTML dentro de Python. Para criar uma coluna nova, acrescente-a em
+`NOVAS` (`db.py`). Rode os testes antes de enviar mudanças: `python -m unittest discover -t . -s tests`.
 
 ## GitHub
 
-Envie só o código. O banco, os anexos e os backups têm dados pessoais (LGPD) e **nunca** devem ir para o repositório.
-Crie um `.gitignore` com:
-
-```
-denuncias.db
-uploads/
-backups/
-__pycache__/
-```
-
-Para marcar versões: `git tag -a v1.3 -m "Versão 1.3"` e `git push origin v1.3`.
+Envie só o código (o `.gitignore` já exclui `denuncias.db`, `uploads/`, `backups/` e `__pycache__/`: eles têm dados
+pessoais e nunca devem ir para o repositório). Para marcar versões: `git tag -a v2.0 -m "Versão 2.0"` e `git push origin v2.0`.
 
 ## Segurança e privacidade
 
-- O sistema **ainda não tem login**. Por isso só aceita acessos do próprio computador. Antes de abrir para a rede,
-  implemente usuários e senhas.
-- Guarda CPF e dados de denunciantes: mantenha a pasta em computador de acesso restrito.
-- Textos digitados são exibidos de forma segura, anexos HTML/SVG nunca são executados e envios de outros sites são bloqueados.
-
-## Estrutura do `app.py`
-
-Tudo em um arquivo, nesta ordem (procure pelos comentários `# ---`):
-
-1. **Configuração:** pastas, variáveis de ambiente, listas de status, tipos e cores.
-2. **Banco de dados:** tabelas, índices e atualização de bancos antigos (`SCHEMA`, `NOVAS`, `init()`).
-3. **Utilitários:** acesso ao banco (`db`, `q`, `ex`), validação de formulário (`dados_form`, `iso`), código único (`novo_codigo`).
-4. **Segurança, erros e filtros:** proteção de formulários, cabeçalhos, páginas de erro e filtros dos modelos.
-5. **Rotas:** painel e cadastro, chamado e histórico, revisitas, mapa, categorias, relatório, edição e backup.
-6. **Visual:** CSS e modelos HTML (`T`), com o `base` compartilhado por todas as telas.
-
-Regra para gravar: uma escrita simples usa `ex()`; várias escritas que devem acontecer juntas usam `with db() as cx:`
-(tudo é gravado ou nada é).
+- Ainda **não há login**; por isso o sistema só aceita acessos do próprio computador. Antes de abrir para a rede, implemente usuários e senhas.
+- Guarda CPF e dados de denunciantes (LGPD): mantenha a pasta em computador de acesso restrito.
+- Textos digitados são exibidos de forma segura, anexos HTML/SVG nunca são executados, envios de outros sites são bloqueados.

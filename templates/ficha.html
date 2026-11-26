@@ -1,0 +1,16 @@
+{% extends "base.html" %}{% from "_macros.html" import anexo %}{% block t %}Ficha {{d.codigo}}{% endblock %}{% block head %}{% endblock %}{% block c %}
+<p class=noprint><button onclick="print()">Imprimir / Salvar como PDF</button> <a class="btn s" href="/d/{{d.id}}">Voltar ao chamado</a></p>
+<div class="card fx"><div class=hd><div><b style="font-size:17px">{{'Ficha de fiscalização de ofício' if d.origem == 'Fiscalização' else 'Ficha de denúncia ambiental'}}</b><div class=k>Emitida em {{hoje|br}}</div></div>
+<div style="text-align:right"><b style="font-size:17px">{{d.codigo}}</b><br>{{d.status|st}}</div></div>
+<div class=meta><span><span class=k>{{'Realizada em' if d.origem == 'Fiscalização' else 'Recebida em'}}</span> <b>{{d.criada|br}}</b></span><span><span class=k>Categoria</span> <b>{{d.cat}}</b></span>
+<span><span class=k>Prioridade</span> <b>{{d.prioridade}}</b></span><span><span class=k>Situação</span> <b>{{'Reincidência' if d.reincidente else 'Primeira vez'}}</b></span>
+{% if d.origem == 'Fiscalização' %}<span><span class=k>Fiscal responsável</span> <b>{{d.fiscal or 'Não informado'}}</b></span>{% else %}<span><span class=k>Denunciante</span> <b>{% if d.anonima %}Anônima{% else %}{{d.denunciante or 'Não informado'}}{% if d.contato %} · {{d.contato}}{% endif %}{% endif %}</b></span>{% endif %}</div>
+<h2>{{'Motivo / objetivo' if d.origem == 'Fiscalização' else 'Descrição'}}</h2><div style="white-space:pre-wrap">{{d.descricao}}</div>
+{% if d.legislacao %}<h2>Legislação aplicável</h2><div>{{d.legislacao|fmt}}</div>{% endif %}
+<h2>Local</h2><div>{{d.logradouro}} {{d.numero}}, {{d.bairro}}{% if d.municipio %} - {{d.municipio}}{% endif %}{% if d.referencia %} · Ref.: {{d.referencia}}{% endif %}{% if d.lat is not none %} · <span class=k>Coord.</span> {{d.lat}}, {{d.lon}}{% endif %}</div>
+{% if d.resp_nome or d.resp_cpf or d.resp_contato %}<div><span class=k>Responsável pelo local:</span> {{d.resp_nome}}{% if d.resp_cpf %} · CPF {{d.resp_cpf}}{% endif %}{% if d.resp_contato %} · {{d.resp_contato}}{% endif %}</div>{% endif %}
+{% if desd %}<h2>Processos, notificações, embargos e autuações</h2><table><tr><th>Tipo<th>Número<th>Data<th>Observação</tr>{% for x in desd %}<tr><td>{{x.tipo}}<td>{{x.numero}}<td>{{x.data|br}}<td>{{x.obs}}</tr>{% endfor %}</table>{% endif %}
+{% if revs %}<h2>Revisitas</h2><table><tr><th>Prevista<th>Realizada<th>Fiscal<th>Constatado</tr>{% for r in revs %}<tr><td>{{r.prevista|br}}<td>{{r.feita|br or 'Pendente'}}<td>{{r.fiscal}}<td>{{r.obs}}</tr>{% endfor %}</table>{% endif %}
+<h2>Histórico</h2><table><tr><th style="width:78px">Data<th style="width:90px">Tipo<th>Registro</tr>{% for a in tl|reverse %}<tr><td>{{a.data|br}}<td>{{a.tipo}}<td>{% if a.status_novo %}{{a.status_novo|st}} {% endif %}<span style="white-space:pre-wrap">{{a.texto}}</span>{% if a.autor %} <span class=k>({{a.autor}})</span>{% endif %}</tr>{% endfor %}</table>
+{% set todos = an.values()|sum(start=[]) %}{% if todos %}<h2>Anexos</h2><div class=it>{% for x in todos %}{{ anexo(x) }}{% endfor %}</div>{% endif %}
+</div>{% endblock %}

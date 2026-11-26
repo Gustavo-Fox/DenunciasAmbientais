@@ -1,0 +1,32 @@
+{% extends "base.html" %}{% from "_macros.html" import anexo %}{% block t %}{{d.codigo}} · Denúncias{% endblock %}{% block c %}<h1>{{d.codigo}} {{d.status|st}}{% if d.reincidente %} <span class=tag>Reincidência</span>{% endif %}{% if d.anonima %} <span class=tag>Anônima</span>{% endif %}{% if d.origem == 'Fiscalização' %} <span class=tag>De ofício</span>{% endif %}</h1>
+<p class=noprint><a class=btn href="/d/{{d.id}}/imprimir" target=_blank>Imprimir / PDF</a> {% if d.status != 'Cancelada' %}<a class="btn s" href="/d/{{d.id}}/editar">Editar cadastro</a>{% endif %}</p>
+{% include "_cancelado.html" %}<div class=card style="border-top:4px solid {{d.status|cor}}"><div class=g><div><div class=mut>Categoria</div>{{d.cat}}</div><div><div class=mut>{{'Realizada em' if d.origem == 'Fiscalização' else 'Recebida em'}}</div>{{d.criada}}</div>{% if d.fiscal %}<div><div class=mut>Fiscal responsável</div>{{d.fiscal}}</div>{% endif %}
+<div><div class=mut>Prioridade</div>{{d.prioridade}}</div></div><p>{{d.descricao}}</p>{% if d.legislacao %}<p><b>Legislação aplicável:</b><br>{{d.legislacao|fmt}}</p>{% endif %}
+<p><b>Local:</b> {{d.logradouro}} {{d.numero}}, {{d.bairro}} - {{d.municipio}}{% if d.referencia %} ({{d.referencia}}){% endif %}
+{% if d.lat is not none %}<br><span class=mut>{{d.lat}}, {{d.lon}}</span> · <a target=_blank href="https://www.openstreetmap.org/?mlat={{d.lat}}&mlon={{d.lon}}#map=17/{{d.lat}}/{{d.lon}}">Ver no mapa</a>{% endif %}</p>
+{% if d.anonima %}<p class=mut>Denúncia anônima</p>{% elif d.denunciante %}<p class=mut>Denunciante: {{d.denunciante}} {{d.contato}}</p>{% endif %}
+{% if d.resp_nome or d.resp_cpf or d.resp_contato %}<p><b>Responsável pelo local:</b> {{d.resp_nome}} · CPF {{d.resp_cpf}} · {{d.resp_contato}}</p>{% endif %}
+{% if d.status != 'Cancelada' %}<details class=noprint style="margin:8px 0"><summary>{{'Editar' if d.legislacao else 'Informar'}} legislação aplicável</summary>
+<form method=post action="/d/{{d.id}}/legislacao"><textarea name=legislacao rows=3 placeholder="Ex.: Lei 9.605/1998, art. 38; Decreto 6.514/2008, art. 43">{{d.legislacao or ''}}</textarea>
+<p><button class=s>Salvar legislação</button></p></form></details>{% endif %}
+{% for x in an.get(None, []) %}{{ anexo(x, true) }}{% endfor %}</div>
+<div class=card><h2>Processo, notificação, embargo ou autuação</h2>
+{% for x in desd %}<p><span class=tag>{{x.tipo}}</span> {{x.numero}} · {{x.data}} {{x.obs}}</p>{% else %}<p class=mut>Nada registrado até agora.</p>{% endfor %}
+{% if d.status != 'Cancelada' %}<form method=post action="/d/{{d.id}}/desdobramento" class="g noprint"><div><label>Tipo</label><select name=tipo>{% for t in DESD %}<option>{{t}}{% endfor %}</select></div>
+<div><label>Número</label><input name=numero></div><div><label>Data</label><input type=date name=data value="{{hoje}}" required></div>
+<div><label>Observação</label><input name=obs></div><div><label>&nbsp;</label><button class=s>Registrar</button></div></form>{% endif %}
+{% if outros %}<p class=mut style="margin-top:12px">Outros chamados neste endereço: {% for o in outros %}<a href="/d/{{o.id}}">{{o.codigo}}</a> ({{o.criada}}) {% endfor %}</p>{% endif %}</div>
+<div class=card><h2>Revisitas</h2>{% for r in revs %}<div style="margin-bottom:10px">
+{% if r.feita %}Realizada em {{r.feita}}: {{r.obs}}{% else %}<span class="{{'late' if r.prevista<hoje}}">Prevista para {{r.prevista}}</span>
+{% if d.status != 'Cancelada' %}<form method=post action="/revisita/{{r.id}}/feita" class=noprint style="display:flex;gap:8px;margin-top:4px"><input name=obs placeholder="O que foi constatado?" required><input name=fiscal placeholder="Fiscal" style="max-width:160px">
+<button class=s>Marcar como realizada</button></form>{% endif %}{% endif %}</div>{% else %}<p class=mut>Nenhuma revisita agendada.</p>{% endfor %}
+{% if d.status != 'Cancelada' %}<form method=post action="/d/{{d.id}}/revisita" class=noprint style="display:flex;gap:8px;max-width:360px"><input type=date name=prevista required><button class=s>Agendar revisita</button></form>{% endif %}</div>
+{% if d.status != 'Cancelada' %}<div class="card noprint"><h2>Atualizar chamado</h2><form method=post action="/d/{{d.id}}/acompanhar" enctype=multipart/form-data><div class=g>
+<div><label>Data</label><input type=date name=data value="{{hoje}}" required></div>
+<div><label>Tipo</label><select name=tipo>{% for t in TIPOS %}<option>{{t}}{% endfor %}</select></div>
+<div><label>Novo status</label><select name=status><option value="">Manter ({{d.status}})</option>{% for s in STATUS %}<option>{{s}}{% endfor %}</select></div>
+<div><label>Registrado por</label><input name=autor></div></div><label>O que aconteceu</label><textarea name=texto rows=3 required></textarea>
+<label>Fotos e documentos</label>{% include "_campo_anexos.html" %}<p><button>Registrar atualização</button></p></form></div>{% endif %}
+{% include "_cancelar.html" %}<div class=card><h2>Histórico</h2><div class=tl>{% for a in tl %}<div><b>{{a.data}}</b> · {{a.tipo}}
+{% if a.status_novo %}{{a.status_novo|st}}{% endif %}{% if a.autor %} <span class=mut>por {{a.autor}}</span>{% endif %}
+<div style="white-space:pre-wrap">{{a.texto}}</div>{% for x in an.get(a.id, []) %}{{ anexo(x, true) }}{% endfor %}</div>{% endfor %}</div></div>{% endblock %}

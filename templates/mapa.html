@@ -1,0 +1,4 @@
+{% extends "base.html" %}{% block head %}{% include "_leaflet.html" %}{% endblock %}{% block c %}<h1>Mapa das denúncias</h1>
+<div id=map style="height:560px" data-lat="{{c[0]}}" data-lon="{{c[1]}}" data-zoom="{{c[2]}}"></div>
+<script type="application/json" id="pontos">{{ pontos|tojson }}</script>
+<script src="{{ url_for('static', filename='js/mapa-geral.js', v=VERSAO) }}"></script>{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}{% block head %}{% include "_leaflet.html" %}{% endblock %}{% block c %}<h1>Editar {{d.codigo}}</h1>
+<form method=post><div class=card><h2>Denúncia</h2><div class=g>
+<div><label>Data de recebimento</label><input type=date name=criada value="{{d.criada}}" required></div>
+<div><label>Categoria</label><select name=categoria_id>{% for c in cats %}<option value={{c.id}} {{'selected' if c.id==d.categoria_id}}>{{c.nome}}</option>{% endfor %}</select></div>
+<div><label>Prioridade</label><select name=prioridade>{% for p in ['Baixa','Normal','Alta'] %}<option {{'selected' if p==d.prioridade}}>{{p}}</option>{% endfor %}</select></div></div>
+<label>Descrição</label><textarea name=descricao rows=4 required>{{d.descricao}}</textarea>
+<label>Legislação aplicável (opcional)</label><textarea name=legislacao rows=2>{{d.legislacao or ''}}</textarea>
+<div class=g><div><label>Situação</label><select name=reincidente><option value=0>Primeira vez<option value=1 {{'selected' if d.reincidente}}>Reincidência</select></div>
+{% if d.origem != 'Fiscalização' %}<div><label>&nbsp;</label><label style="margin:0;color:inherit;font-size:15px"><input type=checkbox name=anonima style="width:auto" {{'checked' if d.anonima}} onchange="denunciante.disabled=contato.disabled=this.checked"> Denúncia anônima</label></div>{% else %}<div><label>Fiscal responsável</label><input name=fiscal value="{{d.fiscal or ''}}"></div>{% endif %}</div>
+{% if d.origem != 'Fiscalização' %}<div class=g><div><label>Denunciante</label><input name=denunciante id=denunciante value="{{d.denunciante or ''}}" {{'disabled' if d.anonima}}></div>
+<div><label>Contato</label><input name=contato id=contato value="{{d.contato or ''}}" {{'disabled' if d.anonima}}></div></div>
+<p class=mut>Marcar como anônima apaga os dados do denunciante.</p>{% endif %}</div>
+<div class=card><h2>Responsável pelo local</h2><div class=g><div><label>Nome</label><input name=resp_nome value="{{d.resp_nome or ''}}"></div>
+<div><label>CPF</label><input name=resp_cpf value="{{d.resp_cpf or ''}}"></div><div><label>Contato</label><input name=resp_contato value="{{d.resp_contato or ''}}"></div></div></div>
+<div class=card><h2>Local</h2><div class=g><div><label>Rua ou localidade</label><input name=logradouro value="{{d.logradouro or ''}}" required></div>
+<div><label>Número</label><input name=numero value="{{d.numero or ''}}"></div><div><label>Bairro ou distrito</label><input name=bairro value="{{d.bairro or ''}}"></div>
+<div><label>Município</label><input name=municipio value="{{d.municipio or ''}}"></div></div><label>Ponto de referência</label><input name=referencia value="{{d.referencia or ''}}">
+<div class=g><div><label>Latitude</label><input name=lat id=lat value="{{d.lat if d.lat is not none else ''}}"></div>
+<div><label>Longitude</label><input name=lon id=lon value="{{d.lon if d.lon is not none else ''}}"></div></div>
+<p><button type=button class=s onclick="gps()">Usar minha localização</button> <span class=mut>ou clique no mapa para mover o ponto</span></p><div id=map data-lat="{{ d.lat if d.lat is not none else c[0] }}" data-lon="{{ d.lon if d.lon is not none else c[1] }}" data-zoom="{{ 16 if d.lat is not none else c[2] }}" {{ 'data-marcador=1' if d.lat is not none }}></div></div>
+<div class=card><label style="margin-top:0">Corrigido por (aparece no histórico)</label><input name=autor style="max-width:260px">
+<p><button>Salvar correções</button> <a class="btn s" href="/d/{{d.id}}">Cancelar</a></p></div></form>
+<script src="{{ url_for('static', filename='js/seletor-mapa.js', v=VERSAO) }}"></script>{% endblock %}

@@ -1,0 +1,15 @@
+{# Miniatura (imagens) ou link (demais arquivos) de um anexo. Com gerir=true, mostra também "Gerenciar" (substituir/remover). #}
+{% macro anexo(x, gerir=false) -%}
+<span class=anexo>
+{%- if x.arquivo.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp')) -%}
+<a href="/anexos/{{x.id}}/arquivo" target=_blank title="{{x.nome}}"><img src="/anexos/{{x.id}}/mini" alt="{{x.nome}}" loading=lazy></a>
+{%- else -%}
+<a href="/anexos/{{x.id}}/arquivo" target=_blank>{{x.nome}}</a> <span class=mut>{{ (x.tamanho or 0)|tam }}</span>
+{%- endif -%}
+{% if gerir %}<details class="noprint gerir"><summary>Gerenciar</summary>
+<form method=post enctype=multipart/form-data action="/anexos/{{x.id}}/gerir">
+<input name=motivo placeholder="Motivo (obrigatório)" required><input name=autor placeholder="Seu nome">
+<input type=file name=arquivo accept="{{ ANEXO_ACCEPT }}">
+<button class=s name=acao value=substituir>Substituir pelo arquivo escolhido</button>
+<button class=s name=acao value=remover onclick="return confirm('Remover este anexo?')">Remover</button></form></details>{% endif %}</span>
+{%- endmacro %}

@@ -1,0 +1,4 @@
+{% extends "base.html" %}{% block c %}<h1>Revisitas pendentes</h1><div class=card><table>
+<tr><th>Prevista<th>Chamado<th>Local</tr>{% for r in rows %}<tr><td class="{{'late' if r.prevista<hoje}}">{{r.prevista}}
+<td><a href="/d/{{r.denuncia_id}}">{{r.codigo}}</a><td>{{r.logradouro}} {{r.numero}}, {{r.bairro}}</tr>
+{% else %}<tr><td colspan=3>Nenhuma revisita pendente.</tr>{% endfor %}</table></div>{% endblock %}

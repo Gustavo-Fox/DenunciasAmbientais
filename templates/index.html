@@ -1,0 +1,13 @@
+{% extends "base.html" %}{% block c %}<h1>Chamados</h1>
+<div class=g><div class=card><div class=mut>Em andamento</div><div class=big>{{abertas}}</div></div>
+<div class=card><div class=mut>Revisitas atrasadas</div><div class="big {{'late' if atras}}">{{atras}}</div></div></div>
+<form class=card><div class=g><div><label>Busca</label><input name=q value="{{request.args.q}}" placeholder="Código, rua, bairro, texto"></div>
+<div><label>Status</label><select name=status><option value="">Todos</option>{% for s in STATUS_TODOS %}<option {{'selected' if s==request.args.status}}>{{s}}</option>{% endfor %}</select></div>
+<div><label>Origem</label><select name=origem><option value="">Todas<option value="Denúncia" {{'selected' if request.args.origem=='Denúncia'}}>Denúncias<option value="Fiscalização" {{'selected' if request.args.origem=='Fiscalização'}}>Fiscalizações de ofício</select></div>
+<div><label>Categoria</label><select name=cat><option value="">Todas</option>{% for c in cats %}<option value={{c.id}} {{'selected' if c.id|string==request.args.cat}}>{{c.nome}}</option>{% endfor %}</select></div></div>
+<p><button>Filtrar</button></p><p class=mut>Legenda: {% for s in STATUS_TODOS %}{{s|st}} {% endfor %}</p></form>
+<div class=card style="overflow:auto"><table><tr><th>Código<th>Recebida<th>Categoria<th>Local<th>Status<th>Desdobramento<th>Próxima revisita</tr>
+{% for r in rows %}<tr class=st style="--c:{{r.status|cor}}"><td><a href="/d/{{r.id}}">{{r.codigo}}</a>{% if r.origem == 'Fiscalização' %} <span class=tag>De ofício</span>{% endif %}<td>{{r.criada}}<td>{{r.cat}}<td>{{r.logradouro}} {{r.numero}}, {{r.bairro}}
+<td>{{r.status|st}}{% if r.reincidente %} <span class=tag>Reincidência</span>{% endif %}<td>{{r.desd or '—'}}<td class="{{'late' if r.prox and r.prox<hoje}}">{{r.prox or '—'}}</tr>
+{% else %}<tr><td colspan=7>Nenhuma denúncia encontrada. <a href="/nova">Registrar uma denúncia</a></tr>{% endfor %}</table></div>
+{% if paginas > 1 %}<p style="display:flex;gap:12px;align-items:center">{% if pag > 1 %}<a class="btn s" href="?{{qs(page=pag-1)}}">Anterior</a>{% endif %}<span class=mut>Página {{pag}} de {{paginas}} · {{total}} chamados</span>{% if pag < paginas %}<a class="btn s" href="?{{qs(page=pag+1)}}">Próxima</a>{% endif %}</p>{% elif total %}<p class=mut>{{total}} chamado(s)</p>{% endif %}{% endblock %}

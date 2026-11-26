@@ -1,0 +1,21 @@
+{% extends "base.html" %}{% block head %}{% include "_leaflet.html" %}{% endblock %}{% block c %}<h1>{{'Nova fiscalização de ofício' if fisc else 'Nova denúncia'}}</h1>
+<form method=post enctype=multipart/form-data><input type=hidden name=tipo value="{{'fiscalizacao' if fisc else 'denuncia'}}"><div class=card><h2>{{'Fiscalização' if fisc else 'Denúncia'}}</h2><div class=g>
+<div><label>{{'Data da fiscalização' if fisc else 'Data de recebimento'}}</label><input type=date name=criada value="{{hoje}}" required></div>
+<div><label>Categoria</label><select name=categoria_id>{% for c in cats %}<option value={{c.id}}>{{c.nome}}</option>{% endfor %}</select></div>
+<div><label>Prioridade</label><select name=prioridade><option>Normal<option>Alta<option>Baixa</select></div></div>
+<label>{{'Motivo / objetivo' if fisc else 'Descrição'}}</label><textarea name=descricao rows=4 required></textarea>
+<label>Legislação aplicável (opcional)</label><textarea name=legislacao rows=2 placeholder="Ex.: Lei 9.605/1998, art. 38"></textarea>
+<div class=mut>Um item por linha. Use **negrito** ou *itálico* para destacar.</div>
+<div class=g><div><label>Situação</label><select name=reincidente><option value=0>Primeira vez<option value=1>Reincidência</select></div>
+{% if not fisc %}<div><label>&nbsp;</label><label style="margin:0;color:inherit;font-size:15px"><input type=checkbox name=anonima style="width:auto" onchange="denunciante.disabled=contato.disabled=this.checked"> Denúncia anônima</label></div>{% endif %}{% if fisc %}<div><label>Fiscal responsável</label><input name=fiscal></div>{% endif %}</div>
+{% if not fisc %}<div class=g><div><label>Denunciante (opcional)</label><input name=denunciante id=denunciante></div>
+<div><label>Contato (opcional)</label><input name=contato id=contato></div></div>{% endif %}</div>
+<div class=card><h2>Responsável pelo local</h2><div class=g><div><label>Nome</label><input name=resp_nome></div>
+<div><label>CPF</label><input name=resp_cpf inputmode=numeric placeholder="000.000.000-00"></div><div><label>Contato</label><input name=resp_contato></div></div></div>
+<div class=card><h2>Local</h2><div class=g><div><label>Rua ou localidade</label><input name=logradouro required></div>
+<div><label>Número</label><input name=numero></div><div><label>Bairro ou distrito</label><input name=bairro></div>
+<div><label>Município</label><input name=municipio></div></div><label>Ponto de referência</label><input name=referencia>
+<div class=g><div><label>Latitude</label><input name=lat id=lat></div><div><label>Longitude</label><input name=lon id=lon></div></div>
+<p><button type=button class=s onclick="gps()">Usar minha localização</button> <span class=mut>ou clique no mapa para marcar o ponto</span></p><div id=map data-lat="{{c[0]}}" data-lon="{{c[1]}}" data-zoom="{{c[2]}}"></div></div>
+<div class=card><h2>Fotos e documentos</h2>{% include "_campo_anexos.html" %}</div><button>{{'Registrar fiscalização' if fisc else 'Registrar denúncia'}}</button></form>
+<script src="{{ url_for('static', filename='js/seletor-mapa.js', v=VERSAO) }}"></script>{% endblock %}

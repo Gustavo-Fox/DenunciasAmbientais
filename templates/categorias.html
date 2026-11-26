@@ -1,0 +1,3 @@
+{% extends "base.html" %}{% block c %}<h1>Categorias</h1><div class=card><table><tr><th>Categoria<th>Denúncias</tr>
+{% for r in rows %}<tr><td>{{r.nome}}<td>{{r.n}}</tr>{% endfor %}</table></div>
+<form method=post class=card style="display:flex;gap:8px"><input name=nome placeholder="Nova categoria" required><button>Adicionar categoria</button></form>{% endblock %}

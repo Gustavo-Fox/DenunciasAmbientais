@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 2.0
+- Nova estrutura do código, pronta para trabalho em equipe: pacote `sistema/` (config, banco, camada de acesso a dados `repo.py`, serviço de anexos), rotas por assunto (blueprints em `sistema/rotas/`), `templates/` e `static/` (CSS e JavaScript em arquivos próprios) e testes automáticos em `tests/`
+- Cancelar chamado com justificativa obrigatória, sem apagar (e reativar, também com justificativa); o chamado cancelado fica bloqueado para alterações e sai das contagens, revisitas pendentes e mapa
+- Anexos: limite de tamanho por tipo (imagens 15 MB, documentos 25 MB, vídeos 100 MB) e de 20 arquivos por envio, só tipos permitidos (com conferência do conteúdo), miniaturas das imagens (Pillow), e substituir ou remover um anexo com motivo; o arquivo removido fica guardado em `uploads/_removidos` e o fato entra no histórico
+- Ao atualizar de versões anteriores: troque os arquivos do programa e mantenha `denuncias.db`, `uploads/` e `backups/`; o banco é atualizado sozinho
+
 ## 1.4
 - Atalho para a área de trabalho (criar_atalho.bat, com ícone) e inicializador (iniciar.bat); o sistema abre o navegador sozinho
 - Fiscalizações de ofício (que não vieram de denúncia): código próprio FIS-AAAA-00001, fiscal responsável, histórico, anexos, revisitas, mapa, ficha e seção própria no relatório mensal

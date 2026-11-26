@@ -1,0 +1,6 @@
+<!doctype html><html lang=pt-BR><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">
+<title>{% block t %}Denúncias Ambientais{% endblock %}</title>
+<link rel=icon href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🌿%3C/text%3E%3C/svg%3E"><link rel=stylesheet href="{{ url_for('static', filename='css/app.css', v=VERSAO) }}">{% block head %}{% endblock %}
+<header><a class=logo href="/">Denúncias Ambientais</a><nav><a href="/">Chamados</a><a href="/revisitas">Revisitas</a>
+<a href="/mapa">Mapa</a><a href="/relatorio">Relatório</a><a href="/categorias">Categorias</a><a href="/backup">Backup</a></nav><a class=btn href="/nova">Nova denúncia</a><a class="btn s" href="/nova?tipo=fiscalizacao">Nova fiscalização</a></header>
+<main>{% for m in get_flashed_messages() %}<div class=aviso>{{m}}</div>{% endfor %}{% block c %}{% endblock %}</main><footer class=mut style="text-align:center;padding:12px">Versão {{VERSAO}}</footer></html>
